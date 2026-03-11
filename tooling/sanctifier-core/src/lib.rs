@@ -14,8 +14,8 @@ use syn::{parse_str, Fields, File, Item, Meta, Type};
 
 pub use rules::{Rule, RuleRegistry, RuleViolation, Severity};
 
-use soroban_sdk::Env;
-use thiserror::Error;
+// Redundant imports removed
+use crate::rules::arithmetic_overflow::ArithVisitor;
 
 const DEFAULT_APPROACHING_THRESHOLD: f64 = 0.8;
 const DEFAULT_STRICT_THRESHOLD: f64 = 0.9;
@@ -91,7 +91,7 @@ pub enum UpgradeCategory {
 }
 
 /// Upgrade safety report.
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Serialize, Clone, Default)]
 pub struct UpgradeReport {
     pub findings: Vec<UpgradeFinding>,
     pub upgrade_mechanisms: Vec<String>,
@@ -116,6 +116,42 @@ struct UnhandledResultVisitor {
     issues: Vec<UnhandledResultIssue>,
     current_fn: Option<String>,
     is_public_fn: bool,
+}
+
+struct UnsafeVisitor {
+    patterns: Vec<UnsafePattern>,
+}
+
+impl<'ast> Visit<'ast> for UnsafeVisitor {
+    fn visit_expr_method_call(&mut self, node: &'ast syn::ExprMethodCall) {
+        let method_name = node.method.to_string();
+        if method_name == "unwrap" || method_name == "expect" {
+            let pattern_type = if method_name == "unwrap" {
+                PatternType::Unwrap
+            } else {
+                PatternType::Expect
+            };
+            let line = node.span().start().line;
+            self.patterns.push(UnsafePattern {
+                pattern_type,
+                line,
+                snippet: quote::quote!(#node).to_string(),
+            });
+        }
+        visit::visit_expr_method_call(self, node);
+    }
+
+    fn visit_macro(&mut self, node: &'ast syn::Macro) {
+        if node.path.is_ident("panic") {
+            let line = node.span().start().line;
+            self.patterns.push(UnsafePattern {
+                pattern_type: PatternType::Panic,
+                line,
+                snippet: quote::quote!(#node).to_string(),
+            });
+        }
+        visit::visit_macro(self, node);
+    }
 }
 
 #[allow(dead_code)]
@@ -682,28 +718,18 @@ impl Analyzer {
     }
 
     fn analyze_ledger_size_impl(&self, source: &str) -> Vec<SizeWarning> {
-        let limit = self.config.ledger_limit;
-        let _approaching = (limit as f64 * self.config.approaching_threshold) as usize;
-        let _strict = self.config.strict_mode;
-        let _strict_threshold = limit / 2;
-
         let file = match parse_str::<File>(source) {
             Ok(f) => f,
             Err(_) => return vec![],
         };
 
         let limit = self.config.ledger_limit;
-        let approaching = ((limit as f64) * self.config.approaching_threshold) as usize;
-        let strict = self.config.strict_mode;
-        let strict_threshold = ((limit as f64) * DEFAULT_STRICT_THRESHOLD) as usize;
-
-        let mut warnings = Vec::new();
-        let limit = self.config.ledger_limit;
         let approaching = self.config.approaching_threshold;
         let strict = self.config.strict_mode;
-        let strict_threshold = (limit as f64 * 0.5) as usize;
+        // Use 90% as strict threshold heuristic
+        let strict_threshold = (limit as f64 * DEFAULT_STRICT_THRESHOLD) as usize;
 
-        let approaching_count = approaching;
+        let mut warnings = Vec::new();
 
         for item in &file.items {
             match item {
@@ -711,7 +737,7 @@ impl Analyzer {
                     if has_contracttype(&s.attrs) {
                         let size = self.estimate_struct_size(s);
                         if let Some(level) =
-                            classify_size(size, limit, approaching_count, strict, strict_threshold)
+                            classify_size(size, limit, approaching, strict, strict_threshold)
                         {
                             warnings.push(SizeWarning {
                                 struct_name: s.ident.to_string(),
@@ -726,7 +752,7 @@ impl Analyzer {
                     if has_contracttype(&e.attrs) {
                         let size = self.estimate_enum_size(e);
                         if let Some(level) =
-                            classify_size(size, limit, approaching_count, strict, strict_threshold)
+                            classify_size(size, limit, approaching, strict, strict_threshold)
                         {
                             warnings.push(SizeWarning {
                                 struct_name: e.ident.to_string(),
@@ -1363,6 +1389,49 @@ impl UnhandledResultVisitor {
         }
         false
     }
+
+    fn is_result_returning_fn(sig: &syn::Signature) -> bool {
+        if let syn::ReturnType::Type(_, ty) = &sig.output {
+            if let syn::Type::Path(tp) = &**ty {
+                if let Some(seg) = tp.path.segments.last() {
+                    return seg.ident == "Result";
+                }
+            }
+        }
+        false
+    }
+
+    fn is_handled(expr: &syn::Expr) -> bool {
+        match expr {
+            syn::Expr::Try(_) => true,
+            syn::Expr::Match(_) => true,
+            syn::Expr::MethodCall(m) => {
+                let method = m.method.to_string();
+                matches!(
+                    method.as_str(),
+                    "unwrap"
+                        | "expect"
+                        | "unwrap_or"
+                        | "unwrap_or_else"
+                        | "unwrap_or_default"
+                        | "ok"
+                        | "err"
+                        | "is_ok"
+                        | "is_err"
+                )
+            }
+            _ => false,
+        }
+    }
+
+    fn expr_to_string(expr: &syn::Expr) -> String {
+        let s = quote::quote!(#expr).to_string();
+        if s.len() > 80 {
+            format!("{}...", &s[..77])
+        } else {
+            s
+        }
+    }
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -1403,7 +1472,10 @@ mod tests {
 
     #[test]
     fn test_analyze_with_limit() {
-        let config = SanctifyConfig { ledger_limit: 50 };
+        let config = SanctifyConfig {
+            ledger_limit: 50,
+            ..Default::default()
+        };
         let analyzer = Analyzer::new(config);
         let source = r#"
             #[contracttype]

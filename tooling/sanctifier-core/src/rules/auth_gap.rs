@@ -1,4 +1,5 @@
-use crate::rules::{Rule, RuleViolation, Severity};
+use crate::rules::{Patch, Rule, RuleViolation, Severity};
+use syn::spanned::Spanned;
 use syn::{parse_str, File, Item};
 
 pub struct AuthGapRule;

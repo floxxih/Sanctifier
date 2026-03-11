@@ -22,7 +22,7 @@ impl Patcher {
         let mut result = source.to_string();
 
         for patch in sorted_patches {
-            let (start_offset, end_offset) = match self::calculate_offsets(&result, &patch) {
+            let (start_offset, end_offset) = match Self::calculate_offsets(&result, &patch) {
                 Some(offsets) => offsets,
                 None => continue,
             };

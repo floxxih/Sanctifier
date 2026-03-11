@@ -60,7 +60,7 @@ impl Rule for ArithmeticOverflowRule {
     }
 }
 
-struct ArithVisitor {
+pub(crate) struct ArithVisitor {
     issues: Vec<ArithmeticIssue>,
     current_fn: Option<String>,
     seen: HashSet<(String, String)>,

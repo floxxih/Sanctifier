@@ -71,7 +71,7 @@ impl RuleViolation {
 }
 
 pub struct RuleRegistry {
-    rules: Vec<Box<dyn Rule>>,
+    pub(crate) rules: Vec<Box<dyn Rule>>,
 }
 
 impl Default for RuleRegistry {
