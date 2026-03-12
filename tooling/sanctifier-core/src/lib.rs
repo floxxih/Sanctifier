@@ -440,17 +440,9 @@ impl Analyzer {
     }
 
     fn verify_smt_invariants_impl(&self) -> Vec<smt::SmtInvariantIssue> {
-        use z3::{Config, Context};
-        let cfg = Config::new();
-        let ctx = Context::new(&cfg);
-        let verifier = smt::SmtVerifier::new(&ctx);
-
-        let mut issues = Vec::new();
-
         // In a full implementation, this would dynamically parse the AST to extract invariants.
         // For now, we return an empty vector to avoid false positives in general analysis.
-
-        issues
+        Vec::new()
     }
 
     pub fn scan_gas_estimation(&self, source: &str) -> Vec<gas_estimator::GasEstimationReport> {
