@@ -9,8 +9,8 @@
 //! The wrapper maintains:
 //! - Execution logs for all contract calls
 //! - State invariant checks before and after execution
-//! - Event emission for security-critical operations
-//! - Gas and performance metrics collection
+//! - Event emission for security-critical operations.
+//! - Gas and performance metrics collection.
 
 use soroban_sdk::{contract, contractimpl, Address, Env, Error, IntoVal, Symbol, Val, Vec};
 
