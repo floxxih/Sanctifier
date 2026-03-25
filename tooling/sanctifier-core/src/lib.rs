@@ -42,6 +42,22 @@ pub mod sep41;
 /// Only available when the `smt` feature is enabled (default).
 #[cfg(feature = "smt")]
 pub mod smt;
+/// Stub SMT types used when the `smt` feature is disabled.
+#[cfg(not(feature = "smt"))]
+pub mod smt {
+    use serde::Serialize;
+
+    /// Placeholder invariant issue type for builds without SMT support.
+    #[derive(Debug, Serialize, Clone, Default)]
+    pub struct SmtInvariantIssue {
+        /// Function under verification.
+        pub function_name: String,
+        /// Human-readable description of the violation.
+        pub description: String,
+        /// Source location.
+        pub location: String,
+    }
+}
 /// Storage-key collision detection (internal).
 mod storage_collision;
 use std::collections::HashSet;
@@ -599,6 +615,12 @@ impl Analyzer {
     #[cfg(feature = "smt")]
     pub fn verify_smt_invariants(&self, source: &str) -> Vec<smt::SmtInvariantIssue> {
         with_panic_guard(|| self.verify_smt_invariants_impl(source))
+    }
+
+    /// Return no SMT findings when the `smt` feature is disabled.
+    #[cfg(not(feature = "smt"))]
+    pub fn verify_smt_invariants(&self, _source: &str) -> Vec<smt::SmtInvariantIssue> {
+        vec![]
     }
 
     #[cfg(feature = "smt")]
