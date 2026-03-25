@@ -165,6 +165,42 @@ pipelines).
 
 ---
 
+### Webhook Integration
+
+Use one or more `--webhook-url` flags to push a `scan.completed` notification
+after `sanctifier analyze` finishes:
+
+```bash
+sanctifier analyze ./contracts/token-with-bugs \
+  --webhook-url https://discord.com/api/webhooks/XXX/YYY \
+  --webhook-url https://hooks.slack.com/services/AAA/BBB/CCC
+```
+
+Provider-specific payloads:
+
+| Provider | Payload shape |
+|----------|---------------|
+| Discord | `{ "content": "Sanctifier scan completed ..." }` |
+| Slack | `{ "text": "Sanctifier scan completed ...", "attachments": [{ "color": "...", "fields": [...] }] }` |
+| Teams | `{ "text": "Sanctifier scan completed ..." }` |
+| Custom webhook | Raw JSON payload: `event`, `project_path`, `timestamp_unix`, `summary` |
+
+The shared payload data includes:
+
+| Field | Description |
+|-------|-------------|
+| `event` | Always `scan.completed` |
+| `project_path` | Analysed path passed to `sanctifier analyze` |
+| `timestamp_unix` | Completion timestamp as UNIX seconds |
+| `summary.total_findings` | Total number of findings emitted |
+| `summary.has_critical` | Whether any critical findings were detected |
+| `summary.has_high` | Whether any high-severity findings were detected |
+
+Webhook delivery failures are non-fatal: Sanctifier logs a warning to stderr and
+still returns the analysis result.
+
+---
+
 ### `sanctifier init`
 
 Generate a `.sanctify.toml` configuration file in the current directory.

@@ -29,6 +29,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt", "json"]
 
 [dev-dependencies]
 assert_cmd = "2.0"
+mockito = "1.6"
 predicates = "3.1"
 tempfile = "3.8"
 jsonschema = "0.18"
@@ -40,4 +41,3 @@ path = "src/lib.rs"
 [[bin]]
 name = "sanctifier"
 path = "src/main.rs"
-
