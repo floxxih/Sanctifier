@@ -32,6 +32,7 @@ assert_cmd = "2.0"
 mockito = "1.6"
 predicates = "3.1"
 tempfile = "3.8"
+jsonschema = "0.18"
 
 
 [[bin]]

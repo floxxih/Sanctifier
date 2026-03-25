@@ -270,6 +270,7 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
 
     if is_json {
         let report = serde_json::json!({
+            "schema_version": "1.0.0",
             "storage_collisions": collisions,
             "ledger_size_warnings": size_warnings,
             "unsafe_patterns": unsafe_patterns,

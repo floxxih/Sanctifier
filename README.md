@@ -24,6 +24,7 @@ and optionally proves invariants with Z3.
 - [Finding Codes](#-finding-codes)
 - [CLI Reference](#-cli-reference)
 - [Example JSON Output](#-example-json-output)
+- [JSON Schema](#-json-schema)
 - [Project Structure](#-project-structure)
 - [Configuration](#-configuration)
 - [Documentation](#-documentation)
@@ -323,9 +324,34 @@ sanctifier analyze ./contracts/vulnerable-contract --format json
     { "code": "S001", "category": "authentication", "description": "..." },
     "..."
   ],
-  "vuln_db_matches": []
+  "vuln_db_matches": [],
+  "schema_version": "1.0.0"
 }
 ```
+
+> **Note:** The example above is abbreviated. See the full field reference in the JSON Schema below.
+
+---
+
+## 📐 JSON Schema
+
+The machine-readable contract for `--format json` output is published at
+[`schemas/analysis-output.json`](schemas/analysis-output.json) (JSON Schema draft-07).
+
+```
+schemas/
+└── analysis-output.json   # Draft-07 schema — validated in CI
+```
+
+Downstream tools (dashboards, IDE plugins, CI integrations) can use the schema to:
+
+- **Validate** report files before processing them.
+- **Generate** typed bindings in any language that supports JSON Schema.
+- **Detect breaking changes** when the tool is upgraded.
+
+The `schema_version` field in every report (e.g. `"1.0.0"`) is bumped independently
+of the Sanctifier tool version whenever the output shape changes, so consumers can
+guard on it without coupling to the CLI release cycle.
 
 ---
 
@@ -335,6 +361,8 @@ sanctifier analyze ./contracts/vulnerable-contract --format json
 Sanctifier/
 ├── contracts/              # Soroban smart contracts (examples & test targets)
 ├── frontend/               # Next.js web dashboard
+├── schemas/
+│   └── analysis-output.json  # JSON Schema (draft-07) for --format json output
 ├── tooling/
 │   ├── sanctifier-cli/     # CLI binary (this is what you install)
 │   └── sanctifier-core/    # Static-analysis engine & Z3 backend

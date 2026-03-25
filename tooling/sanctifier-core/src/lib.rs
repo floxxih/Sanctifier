@@ -5,6 +5,13 @@
 //! [`RuleRegistry`] of pluggable rules.  Every finding is tagged with a
 //! canonical code from the [`finding_codes`] module (`S000` – `S012`).
 //!
+//! # JSON output schema
+//!
+//! When the CLI is invoked with `--format json` the output conforms to the
+//! JSON Schema (draft-07) published at
+//! `schemas/analysis-output.json` in the repository root.  The schema is
+//! versioned via a `schema_version` field in every report and validated in CI.
+//!
 //! # Quick start
 //!
 //! ```rust,ignore
