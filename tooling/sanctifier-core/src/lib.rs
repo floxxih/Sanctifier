@@ -699,7 +699,9 @@ impl Analyzer {
                             let mut summary = FunctionSecuritySummary::default();
                             self.check_fn_body(&f.block, &mut summary);
                             if summary.has_sensitive_action() && !summary.has_auth {
-                                gaps.push(AuthGapIssue { function_name: fn_name });
+                                gaps.push(AuthGapIssue {
+                                    function_name: fn_name,
+                                });
                             }
                         }
                     }
@@ -2314,7 +2316,10 @@ mod tests {
         assert_eq!(todo_match.severity, RuleSeverity::Info);
 
         let unsafe_match = matches.iter().find(|m| m.rule_name == "no_unsafe").unwrap();
-        assert_eq!(unsafe_match.severity, crate::finding_codes::FindingSeverity::Critical);
+        assert_eq!(
+            unsafe_match.severity,
+            crate::finding_codes::FindingSeverity::Critical
+        );
     }
 
     #[test]
@@ -3151,8 +3156,6 @@ impl MyContract {
     }
 }
 
-
-
 impl SmtInvariantIssue {
     pub fn severity(&self) -> crate::finding_codes::FindingSeverity {
         crate::finding_codes::FindingSeverity::Critical
@@ -3169,7 +3172,8 @@ impl SizeWarning {
 }
 impl PanicIssue {
     pub fn severity(&self) -> crate::finding_codes::FindingSeverity {
-        if self.issue_type == "panic!" || self.issue_type == "unwrap" || self.issue_type == "expect" {
+        if self.issue_type == "panic!" || self.issue_type == "unwrap" || self.issue_type == "expect"
+        {
             crate::finding_codes::FindingSeverity::Critical
         } else {
             crate::finding_codes::FindingSeverity::High
@@ -3216,4 +3220,3 @@ impl AuthGapIssue {
         crate::finding_codes::FindingSeverity::Critical
     }
 }
-

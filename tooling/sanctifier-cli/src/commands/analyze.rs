@@ -295,19 +295,45 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
         + sep41_issues.len()
         + timed_out_files.len();
 
-    let has_critical = auth_gaps.iter().any(|i| i.severity() == finding_codes::FindingSeverity::Critical)
-        || panic_issues.iter().any(|i| i.severity() == finding_codes::FindingSeverity::Critical)
-        || smt_issues.iter().any(|i| i.severity() == finding_codes::FindingSeverity::Critical)
-        || sep41_issues.iter().any(|i| i.severity() == finding_codes::FindingSeverity::Critical)
-        || size_warnings.iter().any(|i| i.severity() == finding_codes::FindingSeverity::Critical);
+    let has_critical = auth_gaps
+        .iter()
+        .any(|i| i.severity() == finding_codes::FindingSeverity::Critical)
+        || panic_issues
+            .iter()
+            .any(|i| i.severity() == finding_codes::FindingSeverity::Critical)
+        || smt_issues
+            .iter()
+            .any(|i| i.severity() == finding_codes::FindingSeverity::Critical)
+        || sep41_issues
+            .iter()
+            .any(|i| i.severity() == finding_codes::FindingSeverity::Critical)
+        || size_warnings
+            .iter()
+            .any(|i| i.severity() == finding_codes::FindingSeverity::Critical);
 
-    let has_high = arithmetic_issues.iter().any(|i| i.severity() == finding_codes::FindingSeverity::High)
-        || panic_issues.iter().any(|i| i.severity() == finding_codes::FindingSeverity::High)
-        || size_warnings.iter().any(|i| i.severity() == finding_codes::FindingSeverity::High)
-        || unsafe_patterns.iter().any(|i| i.severity() == finding_codes::FindingSeverity::High)
-        || upgrade_reports.iter().any(|r| r.findings.iter().any(|f| f.severity() == finding_codes::FindingSeverity::High))
-        || event_issues.iter().any(|i| i.severity() == finding_codes::FindingSeverity::High)
-        || unhandled_results.iter().any(|i| i.severity() == finding_codes::FindingSeverity::High);
+    let has_high = arithmetic_issues
+        .iter()
+        .any(|i| i.severity() == finding_codes::FindingSeverity::High)
+        || panic_issues
+            .iter()
+            .any(|i| i.severity() == finding_codes::FindingSeverity::High)
+        || size_warnings
+            .iter()
+            .any(|i| i.severity() == finding_codes::FindingSeverity::High)
+        || unsafe_patterns
+            .iter()
+            .any(|i| i.severity() == finding_codes::FindingSeverity::High)
+        || upgrade_reports.iter().any(|r| {
+            r.findings
+                .iter()
+                .any(|f| f.severity() == finding_codes::FindingSeverity::High)
+        })
+        || event_issues
+            .iter()
+            .any(|i| i.severity() == finding_codes::FindingSeverity::High)
+        || unhandled_results
+            .iter()
+            .any(|i| i.severity() == finding_codes::FindingSeverity::High);
 
     let highest_finding_severity: Option<SeverityLevel> = {
         let mut highest: Option<SeverityLevel> = None;
@@ -783,7 +809,9 @@ pub(crate) fn analyze_single_file(
     res.unsafe_patterns = u;
 
     for g in analyzer.scan_auth_gaps(content) {
-        res.auth_gaps.push(sanctifier_core::AuthGapIssue { function_name: format!("{}:{}", file_name, g.function_name) });
+        res.auth_gaps.push(sanctifier_core::AuthGapIssue {
+            function_name: format!("{}:{}", file_name, g.function_name),
+        });
     }
 
     let mut p = analyzer.scan_panics(content);
