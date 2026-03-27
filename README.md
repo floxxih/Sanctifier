@@ -1,6 +1,6 @@
 # Sanctifier 🛡️
 
-[![CI](https://github.com/Jayy4rl/Sanctifier/actions/workflows/ci.yml/badge.svg)](https://github.com/Jayy4rl/Sanctifier/actions/workflows/ci.yml)
+[![CI](https://github.com/HyperSafeD/Sanctifier/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/HyperSafeD/Sanctifier/actions/workflows/ci.yml)
 [![Codecov](https://codecov.io/gh/Jayy4rl/Sanctifier/graph/badge.svg)](https://codecov.io/gh/Jayy4rl/Sanctifier)
 [![crates.io](https://img.shields.io/crates/v/sanctifier-cli.svg)](https://crates.io/crates/sanctifier-cli)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
