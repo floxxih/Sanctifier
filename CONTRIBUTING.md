@@ -2,6 +2,16 @@
 
 Welcome and thanks for contributing!
 
+## Community Health Files
+
+Before opening an issue or pull request, review the project community policies:
+
+- [Code of Conduct](.github/CODE_OF_CONDUCT.md)
+- [Bug Report Template](.github/ISSUE_TEMPLATE/bug_report.yml)
+- [Feature Request Template](.github/ISSUE_TEMPLATE/feature_request.yml)
+- [Pull Request Template](.github/PULL_REQUEST_TEMPLATE.md)
+- [Security Policy](.github/SECURITY.md)
+
 ## Quick Start with GitHub Codespaces
 
 The fastest way to start contributing is using GitHub Codespaces, which provides a pre-configured development environment with all dependencies installed:
