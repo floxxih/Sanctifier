@@ -62,6 +62,8 @@ pub mod smt {
 }
 /// Storage-key collision detection (internal).
 mod storage_collision;
+/// Soroban v21 (Protocol 21) host functions and storage types.
+pub mod soroban_v21;
 use std::collections::HashSet;
 use syn::spanned::Spanned;
 use syn::visit::{self, Visit};
@@ -2287,7 +2289,7 @@ mod tests {
                 CustomRule {
                     name: "no_unsafe".to_string(),
                     pattern: "unsafe".to_string(),
-                    severity: crate::finding_codes::FindingSeverity::Critical,
+                    severity: RuleSeverity::Critical,
                 },
                 CustomRule {
                     name: "todo_comment".to_string(),
@@ -2301,25 +2303,15 @@ mod tests {
         let source = r#"
             pub fn my_fn() {
                 // TODO: implement this
-                unsafe {
-                    let x = 1;
-                }
+                unsafe { let x = 1; }
             }
         "#;
         let matches = analyzer.analyze_custom_rules(source, &analyzer.config.custom_rules);
         assert_eq!(matches.len(), 2);
-
-        let todo_match = matches
-            .iter()
-            .find(|m| m.rule_name == "todo_comment")
-            .unwrap();
+        let todo_match = matches.iter().find(|m| m.rule_name == "todo_comment").unwrap();
         assert_eq!(todo_match.severity, RuleSeverity::Info);
-
         let unsafe_match = matches.iter().find(|m| m.rule_name == "no_unsafe").unwrap();
-        assert_eq!(
-            unsafe_match.severity,
-            crate::finding_codes::FindingSeverity::Critical
-        );
+        assert_eq!(unsafe_match.severity, RuleSeverity::Critical);
     }
 
     #[test]
@@ -3156,6 +3148,7 @@ impl MyContract {
     }
 }
 
+#[cfg(feature = "smt")]
 impl SmtInvariantIssue {
     /// Returns the severity level of this SMT invariant violation.
     pub fn severity(&self) -> crate::finding_codes::FindingSeverity {

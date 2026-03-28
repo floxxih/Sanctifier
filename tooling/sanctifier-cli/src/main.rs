@@ -43,6 +43,8 @@ pub enum Commands {
     },
     /// Check for and download the latest Sanctifier binary
     Update,
+    /// Detect reentrancy vulnerabilities (state mutation before external call)
+    Reentrancy(commands::reentrancy::ReentrancyArgs),
 }
 
 fn main() {
@@ -127,6 +129,9 @@ fn run() -> anyhow::Result<()> {
         }
         Commands::Update => {
             commands::update::exec()?;
+        }
+        Commands::Reentrancy(args) => {
+            commands::reentrancy::exec(args)?;
         }
     }
 

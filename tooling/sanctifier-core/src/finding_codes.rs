@@ -1,10 +1,9 @@
 //! Canonical finding codes emitted by Sanctifier analysis passes.
 //!
-//! Each constant (`S000` – `S012`) maps to a single diagnostic category.
+//! Each constant (`S000` – `S013`) maps to a single diagnostic category.
 //! Call `all_finding_codes()` to retrieve the full catalogue at runtime.
 
-use serde::Deserialize;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 /// Severity level for findings.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
@@ -48,6 +47,8 @@ pub const UPGRADE_RISK: &str = "S010";
 pub const SMT_INVARIANT_VIOLATION: &str = "S011";
 /// SEP-41 token interface deviation.
 pub const SEP41_INTERFACE_DEVIATION: &str = "S012";
+/// Reentrancy vulnerability detected (state mutation before external call without guard).
+pub const REENTRANCY: &str = "S013";
 
 /// A single finding-code entry with machine-readable code, category, and
 /// human-readable description.
@@ -129,6 +130,11 @@ pub fn all_finding_codes() -> Vec<FindingCode> {
             code: SEP41_INTERFACE_DEVIATION,
             category: "token_interface",
             description: "SEP-41 token interface compatibility or authorization deviation",
+        },
+        FindingCode {
+            code: REENTRANCY,
+            category: "reentrancy",
+            description: "State mutation before external call without a reentrancy guard",
         },
     ]
 }
