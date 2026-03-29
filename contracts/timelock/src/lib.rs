@@ -230,5 +230,5 @@ fn compute_hash(
     data.push_back(salt.to_val());
 
     // Use SHA256 on the XDR representation of the data
-    env.crypto().sha256(&data.to_xdr(env))
+    env.crypto().sha256(&data.to_xdr(env)).into()
 }

@@ -3,6 +3,11 @@
 
 use soroban_sdk::{contract, contracterror, contractimpl, contracttype, Address, Env, String};
 
+#[cfg(test)]
+mod test;
+#[cfg(test)]
+mod fuzz;
+
 // ---------------------------------------------------------------------------
 // SEP-41 type compatibility
 // ---------------------------------------------------------------------------

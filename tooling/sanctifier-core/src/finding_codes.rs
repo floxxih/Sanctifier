@@ -49,6 +49,8 @@ pub const SMT_INVARIANT_VIOLATION: &str = "S011";
 pub const SEP41_INTERFACE_DEVIATION: &str = "S012";
 /// Reentrancy vulnerability detected (state mutation before external call without guard).
 pub const REENTRANCY: &str = "S013";
+/// Hardcoded secret key or sensitive mnemonic in contract source.
+pub const HARDCODED_SECRET_KEY: &str = "S014";
 
 /// A single finding-code entry with machine-readable code, category, and
 /// human-readable description.
@@ -135,6 +137,11 @@ pub fn all_finding_codes() -> Vec<FindingCode> {
             code: REENTRANCY,
             category: "reentrancy",
             description: "State mutation before external call without a reentrancy guard",
+        },
+        FindingCode {
+            code: HARDCODED_SECRET_KEY,
+            category: "secrets",
+            description: "Hardcoded secret key or sensitive mnemonic in contract source",
         },
     ]
 }
