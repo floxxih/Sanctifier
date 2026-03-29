@@ -10,12 +10,12 @@ members = [
     "contracts/runtime-guard-wrapper",
     "contracts/kani-poc",
     "contracts/my-contract",
-    "contracts/vesting",
+
 ]
 resolver = "2"
 
 [workspace.dependencies]
-soroban-sdk = { version = "20.5.0" }
+soroban-sdk = { version = "21.7.6" }
 
 [workspace.package]
 rust-version = "1.78"
