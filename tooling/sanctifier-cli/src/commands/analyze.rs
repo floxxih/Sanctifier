@@ -6,14 +6,16 @@ use clap::{Args, ValueEnum};
 use colored::*;
 use rayon::prelude::*;
 use sanctifier_core::finding_codes;
-use sanctifier_core::{Analyzer, SanctifyConfig, SizeWarningLevel};
+use sanctifier_core::{Analyzer, SanctifyConfig};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::{
     atomic::{AtomicUsize, Ordering},
-    Arc,
+    Arc, Mutex,
 };
 use std::time::{Duration, Instant};
+use sha2::{Digest, Sha256};
+use std::collections::HashMap;
 use tracing::{debug, error, info, warn};
 
 #[derive(ValueEnum, Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -75,12 +77,15 @@ pub struct AnalyzeArgs {
     /// Minimum severity threshold for --exit-code (critical|high|medium|low)
     #[arg(long, value_enum, default_value_t = SeverityLevel::High)]
     pub min_severity: SeverityLevel,
+    /// Disable incremental analysis cache
+    #[arg(short = 'n', long)]
+    pub no_cache: bool,
 }
 
 // ── Per-file result container ────────────────────────────────────────────────
 
 /// All findings produced by analysing a single `.rs` file.
-#[derive(Default)]
+#[derive(Default, serde::Serialize, serde::Deserialize, Clone, Debug)]
 pub(crate) struct FileAnalysisResult {
     pub(crate) file_path: String,
     pub(crate) collisions: Vec<sanctifier_core::StorageCollisionIssue>,
@@ -165,10 +170,17 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
 
     let total_files = rs_files.len();
     let counter = Arc::new(AtomicUsize::new(0));
+    let cached_counter = Arc::new(AtomicUsize::new(0));
     let timeout_dur = if timeout_secs == 0 {
         None
     } else {
         Some(Duration::from_secs(timeout_secs))
+    };
+
+    let cache = if args.no_cache {
+        None
+    } else {
+        Some(Arc::new(Mutex::new(AnalysisCache::load(&path))))
     };
 
     let mut results: Vec<FileAnalysisResult> = rs_files
@@ -183,21 +195,48 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
                 Ok(c) => c,
                 Err(_) => return FileAnalysisResult::default(),
             };
+
+            let hash = sha256_hex(&content);
+            if let Some(ref cache_mutex) = cache {
+                if let Some(cached_res) = cache_mutex.lock().unwrap().lookup(&file_name, &hash) {
+                    cached_counter.fetch_add(1, Ordering::Relaxed);
+                    return cached_res;
+                }
+            }
+
             debug!(target: "sanctifier", file = %file_name, "Scanning Rust source file");
             let analyzer = Arc::clone(&analyzer);
             let vuln_db = Arc::clone(&vuln_db);
             let file_name_clone = file_name.clone();
-            match run_with_timeout(timeout_dur, move || {
+            let result = match run_with_timeout(timeout_dur, move || {
                 analyze_single_file(&analyzer, &vuln_db, &content, &file_name_clone)
             }) {
                 Some(res) => res,
                 None => {
                     warn!(target: "sanctifier", file = %file_name, timeout_secs = timeout_secs, "Analysis timed out");
-                    FileAnalysisResult { file_path: file_name, timed_out: true, ..Default::default() }
+                    FileAnalysisResult {
+                        file_path: file_name.clone(),
+                        timed_out: true,
+                        ..Default::default()
+                    }
                 }
+            };
+
+            if let Some(ref cache_mutex) = cache {
+                cache_mutex
+                    .lock()
+                    .unwrap()
+                    .store(file_name, hash, result.clone());
             }
+
+            result
         })
         .collect();
+
+    if let Some(cache_mutex) = cache {
+        let final_cache = Arc::try_unwrap(cache_mutex).unwrap().into_inner().unwrap();
+        final_cache.save();
+    }
 
     results.sort_by(|a, b| a.file_path.cmp(&b.file_path));
     let mut collisions = Vec::new();
@@ -356,7 +395,7 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
         warn!(target: "sanctifier", error = %err, "Failed to initialize webhook client");
     }
 
-    let duration_ms = start.elapsed().as_millis() as u64;
+
 
     if is_json {
         let report = serde_json::json!({
@@ -386,10 +425,14 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
                 "project_path": path.display().to_string(),
                 "format": "sanctifier-ci-v1",
                 "timeout_secs": timeout_secs,
+                "cached_files": cached_counter.load(Ordering::Relaxed),
+                "total_files": total_files,
             },
             "error_codes": finding_codes::all_finding_codes(),
             "summary": {
                 "total_findings": total_findings,
+                "cached_files": cached_counter.load(Ordering::Relaxed),
+                "reanalysed_files": total_files - cached_counter.load(Ordering::Relaxed),
                 "storage_collisions": collisions.len(),
                 "auth_gaps": auth_gaps.len(),
                 "panic_issues": panic_issues.len(),
@@ -656,9 +699,13 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
         }
     }
 
+    let cached_count = cached_counter.load(Ordering::Relaxed);
+    let reanalysed_count = total_files - cached_count;
     println!(
-        "\n{} Static analysis complete. ({} ms)",
+        "\n{} Static analysis complete. ({} served from cache, {} re-analysed, {} ms)",
         "✨".green(),
+        cached_count.to_string().bold(),
+        reanalysed_count.to_string().bold(),
         duration_ms
     );
     if should_exit_with_1 {
@@ -906,3 +953,62 @@ pub(crate) fn is_soroban_project(path: &Path) -> bool {
     };
     cargo_toml_path.exists()
 }
+
+// ── Cache ────────────────────────────────────────────────────────────────────
+
+fn sha256_hex(content: &str) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(content.as_bytes());
+    format!("{:x}", hasher.finalize())
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Debug)]
+struct CacheEntry {
+    hash: String,
+    result: FileAnalysisResult,
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Debug)]
+struct AnalysisCache {
+    version: String,
+    entries: HashMap<String, CacheEntry>,
+    #[serde(skip)]
+    path: PathBuf,
+}
+
+impl AnalysisCache {
+    fn load(project_root: &Path) -> Self {
+        let path = project_root.join(".sanctifier_cache.json");
+        if let Ok(content) = fs::read_to_string(&path) {
+            if let Ok(mut cache) = serde_json::from_str::<AnalysisCache>(&content) {
+                if cache.version == "1" {
+                    cache.path = path;
+                    return cache;
+                }
+            }
+        }
+        Self {
+            version: "1".to_string(),
+            entries: HashMap::new(),
+            path,
+        }
+    }
+
+    fn save(&self) {
+        if let Ok(content) = serde_json::to_string_pretty(self) {
+            let _ = fs::write(&self.path, content);
+        }
+    }
+
+    fn lookup(&self, file_path: &str, hash: &str) -> Option<FileAnalysisResult> {
+        self.entries
+            .get(file_path)
+            .filter(|e| e.hash == hash)
+            .map(|e| e.result.clone())
+    }
+
+    fn store(&mut self, file_path: String, hash: String, result: FileAnalysisResult) {
+        self.entries.insert(file_path, CacheEntry { hash, result });
+    }
+}
+

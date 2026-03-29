@@ -24,7 +24,7 @@ pub struct VulnDatabase {
     pub vulnerabilities: Vec<VulnEntry>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VulnMatch {
     pub vuln_id: String,
     pub name: String,

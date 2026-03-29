@@ -49,7 +49,10 @@ pub enum Commands {
     Update,
     /// Detect reentrancy vulnerabilities (state mutation before external call)
     Reentrancy(commands::reentrancy::ReentrancyArgs),
-
+    /// Verify local source against on-chain bytecode
+    Verify(commands::verify::VerifyArgs),
+    /// Analyze an entire Cargo workspace (multiple contracts/libs)
+    Workspace(commands::workspace::WorkspaceArgs),
 }
 
 fn main() {
@@ -145,6 +148,12 @@ fn run() -> anyhow::Result<()> {
         }
         Commands::Reentrancy(args) => {
             commands::reentrancy::exec(args)?;
+        }
+        Commands::Verify(args) => {
+            commands::verify::exec(args)?;
+        }
+        Commands::Workspace(args) => {
+            commands::workspace::exec(args)?;
         }
     }
 

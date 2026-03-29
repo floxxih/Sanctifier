@@ -23,7 +23,7 @@
     "metadata": {
       "type": "object",
       "description": "Run-level metadata.",
-      "required": ["version", "timestamp", "project_path", "format", "timeout_secs"],
+      "required": ["version", "timestamp", "project_path", "format", "timeout_secs", "cached_files", "total_files"],
       "additionalProperties": false,
       "properties": {
         "version": {
@@ -49,6 +49,16 @@
           "type": "integer",
           "minimum": 0,
           "description": "Per-file analysis timeout in seconds. 0 means disabled."
+        },
+        "cached_files": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of files served from the incremental analysis cache."
+        },
+        "total_files": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total number of Rust files found in the project."
         }
       }
     },
@@ -69,6 +79,8 @@
         "smt_issues",
         "sep41_issues",
         "timed_out_files",
+        "cached_files",
+        "reanalysed_files",
         "has_critical",
         "has_high"
       ],
@@ -87,6 +99,8 @@
         "smt_issues": { "type": "integer", "minimum": 0 },
         "sep41_issues": { "type": "integer", "minimum": 0 },
         "timed_out_files": { "type": "integer", "minimum": 0 },
+        "cached_files": { "type": "integer", "minimum": 0 },
+        "reanalysed_files": { "type": "integer", "minimum": 0 },
         "has_critical": {
           "type": "boolean",
           "description": "True if any critical-severity finding was emitted."

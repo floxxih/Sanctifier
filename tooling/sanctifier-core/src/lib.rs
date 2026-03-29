@@ -47,10 +47,10 @@ pub mod smt;
 /// Stub SMT types used when the `smt` feature is disabled.
 #[cfg(not(feature = "smt"))]
 pub mod smt {
-    use serde::Serialize;
+    use serde::{Deserialize, Serialize};
 
     /// Placeholder invariant issue type for builds without SMT support.
-    #[derive(Debug, Serialize, Clone, Default)]
+    #[derive(Debug, Serialize, Deserialize, Clone, Default)]
     pub struct SmtInvariantIssue {
         /// Function under verification.
         pub function_name: String,
@@ -90,7 +90,7 @@ where
 // ── Existing types ────────────────────────────────────────────────────────────
 
 /// Severity of a ledger size warning.
-#[derive(Debug, Serialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 #[non_exhaustive]
 pub enum SizeWarningLevel {
     /// Size exceeds the ledger entry limit (e.g. 64KB).
@@ -101,7 +101,7 @@ pub enum SizeWarningLevel {
 
 /// A warning about a `#[contracttype]` whose estimated serialised size is
 /// close to or exceeds the ledger entry limit.
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SizeWarning {
     /// Name of the struct or enum that was analysed.
     pub struct_name: String,
@@ -115,7 +115,7 @@ pub struct SizeWarning {
 
 /// A `panic!`, `.unwrap()`, or `.expect()` call found inside a contract
 /// function.
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PanicIssue {
     /// The contract function containing the panic-path.
     pub function_name: String,
@@ -128,7 +128,7 @@ pub struct PanicIssue {
 // ── UnsafePattern types (visitor-based panic/unwrap scanning) ─────────────────
 
 /// The kind of unsafe pattern detected by [`Analyzer::analyze_unsafe_patterns`].
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[non_exhaustive]
 pub enum PatternType {
     /// A `panic!()` macro invocation.
@@ -141,7 +141,7 @@ pub enum PatternType {
 
 /// An unsafe pattern (`panic!`, `.unwrap()`, `.expect()`) together with its
 /// source location.
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct UnsafePattern {
     /// The kind of pattern.
     pub pattern_type: PatternType,
@@ -154,7 +154,7 @@ pub struct UnsafePattern {
 // ── Upgrade analysis types ────────────────────────────────────────────────────
 
 /// A single finding related to contract upgrade / admin mechanisms.
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct UpgradeFinding {
     /// Broad category of the finding.
     pub category: UpgradeCategory,
@@ -169,7 +169,7 @@ pub struct UpgradeFinding {
 }
 
 /// Category of an upgrade-safety finding.
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum UpgradeCategory {
@@ -186,7 +186,7 @@ pub enum UpgradeCategory {
 }
 
 /// Upgrade safety report produced by [`Analyzer::analyze_upgrade_patterns`].
-#[derive(Debug, Serialize, Clone, Default)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct UpgradeReport {
     /// Individual findings.
     pub findings: Vec<UpgradeFinding>,
@@ -308,7 +308,7 @@ fn is_init_fn(name: &str) -> bool {
 // ── ArithmeticIssue (NEW) ─────────────────────────────────────────────────────
 
 /// Represents an unchecked arithmetic operation that could overflow or underflow.
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ArithmeticIssue {
     /// Contract function in which the operation was found.
     pub function_name: String,
@@ -323,7 +323,7 @@ pub struct ArithmeticIssue {
 // ── TruncationBoundsIssue ────────────────────────────────────────────────────
 
 /// Represents an integer truncation cast or unchecked array/slice indexing.
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TruncationBoundsIssue {
     /// Contract function in which the issue was found.
     pub function_name: String,
@@ -340,7 +340,7 @@ pub struct TruncationBoundsIssue {
 // ── StorageCollisionIssue (NEW) ──────────────────────────────────────────────
 
 /// Represents a potential storage key collision.
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct StorageCollisionIssue {
     /// The storage key literal or expression.
     pub key_value: String,
@@ -355,7 +355,7 @@ pub struct StorageCollisionIssue {
 // ── ContractImportIssue (NEW) ────────────────────────────────────────────────
 
 /// Represents a mismatch or staleness between a `contractimport!` WASM and workspace source.
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ContractImportMismatchIssue {
     /// The `file` path argument from `contractimport!`.
     pub wasm_path: String,
@@ -366,7 +366,7 @@ pub struct ContractImportMismatchIssue {
 }
 
 /// The kind of event issue detected by [`Analyzer::scan_events`].
-#[derive(Debug, Serialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 #[non_exhaustive]
 pub enum EventIssueType {
     /// Topics count varies for the same event name.
@@ -376,7 +376,7 @@ pub enum EventIssueType {
 }
 
 /// An event-related finding (inconsistent schema or optimisable topic).
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct EventIssue {
     /// Function that emits the event.
     pub function_name: String,
@@ -391,7 +391,7 @@ pub struct EventIssue {
 }
 
 /// A `Result` return value that is silently discarded.
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct UnhandledResultIssue {
     /// Function containing the unhandled result.
     pub function_name: String,
@@ -420,7 +420,7 @@ pub struct CustomRule {
 }
 
 /// A match produced by a [`CustomRule`].
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CustomRuleMatch {
     /// Name of the custom rule that matched.
     pub rule_name: String,
@@ -3385,7 +3385,7 @@ impl UnhandledResultIssue {
 }
 
 /// An authentication gap issue detected in a contract function.
-#[derive(Debug, serde::Serialize, Clone, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, PartialEq)]
 pub struct AuthGapIssue {
     /// The name of the function missing authentication.
     pub function_name: String,

@@ -1,3 +1,4 @@
+// AMM Pool contract.
 #![no_std]
 #![allow(unexpected_cfgs)]
 
