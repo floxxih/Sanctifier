@@ -23,6 +23,8 @@ pub mod unhandled_result;
 pub mod unused_variable;
 /// Unsafe PRNG usage in state-critical code.
 pub mod unsafe_prng;
+/// Variable shadowing in nested scopes.
+pub mod variable_shadowing;
 use serde::Serialize;
 use std::any::Any;
 
@@ -178,6 +180,7 @@ impl RuleRegistry {
         registry.register(reentrancy::ReentrancyRule::new());
         registry.register(truncation_bounds::TruncationBoundsRule::new());
         registry.register(unsafe_prng::UnsafePrngRule::new());
+        registry.register(variable_shadowing::VariableShadowingRule::new());
         registry
     }
 }
