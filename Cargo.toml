@@ -12,6 +12,7 @@ members = [
     "contracts/my-contract",
     "contracts/bridge",
     "contracts/oracle",
+    "contracts/unsafe-prng-example",
 ]
 resolver = "2"
 

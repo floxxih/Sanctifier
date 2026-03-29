@@ -21,6 +21,8 @@ pub mod truncation_bounds;
 pub mod unhandled_result;
 /// Unused local variables.
 pub mod unused_variable;
+/// Unsafe PRNG usage in state-critical code.
+pub mod unsafe_prng;
 use serde::Serialize;
 use std::any::Any;
 
@@ -175,6 +177,7 @@ impl RuleRegistry {
         registry.register(shadow_storage::ShadowStorageRule::new());
         registry.register(reentrancy::ReentrancyRule::new());
         registry.register(truncation_bounds::TruncationBoundsRule::new());
+        registry.register(unsafe_prng::UnsafePrngRule::new());
         registry
     }
 }
