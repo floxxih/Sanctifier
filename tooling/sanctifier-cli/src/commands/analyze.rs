@@ -98,6 +98,7 @@ pub(crate) struct FileAnalysisResult {
     pub(crate) truncation_bounds_issues: Vec<sanctifier_core::TruncationBoundsIssue>,
     pub(crate) sep41_checked_contracts: Vec<String>,
     pub(crate) sep41_issues: Vec<sanctifier_core::Sep41Issue>,
+    pub(crate) contractimport_issues: Vec<sanctifier_core::ContractImportMismatchIssue>,
     pub(crate) timed_out: bool,
 }
 
@@ -214,6 +215,7 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
     let mut truncation_bounds_issues = Vec::new();
     let mut sep41_checked_contracts = Vec::new();
     let mut sep41_issues = Vec::new();
+    let mut contractimport_issues = Vec::new();
     let mut timed_out_files: Vec<String> = Vec::new();
 
     for r in results {
@@ -232,6 +234,7 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
         truncation_bounds_issues.extend(r.truncation_bounds_issues);
         sep41_checked_contracts.extend(r.sep41_checked_contracts);
         sep41_issues.extend(r.sep41_issues);
+        contractimport_issues.extend(r.contractimport_issues);
         if r.timed_out {
             timed_out_files.push(r.file_path);
         }
@@ -253,6 +256,7 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
         + smt_issues.len()
         + truncation_bounds_issues.len()
         + sep41_issues.len()
+        + contractimport_issues.len()
         + timed_out_files.len();
 
     let has_critical = auth_gaps
@@ -324,6 +328,9 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
         if !timed_out_files.is_empty() {
             consider(SeverityLevel::Low);
         }
+        if !contractimport_issues.is_empty() {
+            consider(SeverityLevel::Medium);
+        }
         highest
     };
 
@@ -368,6 +375,7 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
             "smt_issues": smt_issues,
             "sep41_checked_contracts": sep41_checked_contracts,
             "sep41_issues": sep41_issues,
+            "contractimport_issues": contractimport_issues,
             "vulnerability_db_matches": vuln_matches,
             "vulnerability_db_version": vuln_db.version,
             "timed_out_files": timed_out_files,
@@ -394,6 +402,7 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
                 "unhandled_results": unhandled_results.len(),
                 "smt_issues": smt_issues.len(),
                 "sep41_issues": sep41_issues.len(),
+                "contractimport_issues": contractimport_issues.len(),
                 "timed_out_files": timed_out_files.len(),
                 "has_critical": has_critical,
                 "has_high": has_high,
@@ -599,6 +608,19 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
             }
         }
     }
+    if !contractimport_issues.is_empty() {
+        println!("\n{} Found ContractImport Mismatches!", "⚠️".yellow());
+        for issue in &contractimport_issues {
+            println!(
+                "   {} [{}] WASM: {}",
+                "->".red(),
+                finding_codes::CONTRACTIMPORT_MISMATCH.bold(),
+                issue.wasm_path.bold()
+            );
+            println!("      Location: {}", issue.location);
+            println!("      Message: {}", issue.message);
+        }
+    }
     if vuln_matches.is_empty() {
         println!(
             "{} No known vulnerability patterns matched (DB v{}).",
@@ -736,6 +758,60 @@ pub(crate) fn analyze_single_file(
             res.sep41_issues.push(issue);
         }
     }
+
+    let mut ci = analyzer.scan_contractimports(content);
+    for i in &mut ci {
+        i.location = format!("{}:{}", file_name, i.location);
+        
+        // Stale WASM check heuristic:
+        // Attempt to find the full path of the WASM file relative to the file doing the import.
+        let mut base_dir = PathBuf::from(file_name);
+        base_dir.pop();
+        let wasm_file_path = base_dir.join(&i.wasm_path);
+        
+        if !wasm_file_path.exists() {
+            i.message = format!("The imported WASM file does not exist: {}", wasm_file_path.display());
+        } else {
+            // Find modification time of the WASM
+            if let Ok(wasm_meta) = std::fs::metadata(&wasm_file_path) {
+                if let Ok(wasm_mtime) = wasm_meta.modified() {
+                    let wasm_stem = wasm_file_path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
+                    let mut found_newer_rs = false;
+                    let mut newest_rs_path = String::new();
+                    
+                    // Simple heuristic: look for any .rs file in the workspace containing the stem
+                    // If a matching .rs file is newer than the wasm, it's considered stale.
+                    let workspace_root = PathBuf::from(".");
+                    let rs_files = crate::commands::analyze::collect_rs_files(&workspace_root, &analyzer.config.ignore_paths);
+                    
+                    for rs_f in rs_files {
+                        let path_str = rs_f.display().to_string();
+                        // Strip hyphens and underscores for loose matching e.g. "my-contract" vs "my_contract"
+                        let normalized_stem = wasm_stem.replace('-', "_");
+                        let normalized_path = path_str.replace('-', "_");
+                        if normalized_path.contains(&normalized_stem) {
+                            if let Ok(rs_meta) = std::fs::metadata(&rs_f) {
+                                if let Ok(rs_mtime) = rs_meta.modified() {
+                                    if rs_mtime > wasm_mtime {
+                                        found_newer_rs = true;
+                                        newest_rs_path = path_str;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    if found_newer_rs {
+                        i.message = format!("The imported WASM appears older than its corresponding workspace source file: {}. Rebuild the contract.", newest_rs_path);
+                    } else {
+                        i.message = String::new(); // No issue
+                    }
+                }
+            }
+        }
+    }
+    res.contractimport_issues = ci.into_iter().filter(|i| !i.message.is_empty()).collect();
 
     res
 }

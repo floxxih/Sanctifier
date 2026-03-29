@@ -352,6 +352,19 @@ pub struct StorageCollisionIssue {
     pub message: String,
 }
 
+// ── ContractImportIssue (NEW) ────────────────────────────────────────────────
+
+/// Represents a mismatch or staleness between a `contractimport!` WASM and workspace source.
+#[derive(Debug, Serialize, Clone)]
+pub struct ContractImportMismatchIssue {
+    /// The `file` path argument from `contractimport!`.
+    pub wasm_path: String,
+    /// 1-based line location.
+    pub location: String,
+    /// Human-readable message.
+    pub message: String,
+}
+
 /// The kind of event issue detected by [`Analyzer::scan_events`].
 #[derive(Debug, Serialize, Clone, PartialEq)]
 #[non_exhaustive]
@@ -729,6 +742,52 @@ impl Analyzer {
             }
         }
         gaps
+    }
+
+    // ── Contract Import scanning ─────────────────────────────────────────────
+
+    /// Scan for `contractimport!` declarations and return their parsed `file` paths.
+    /// Actual file staleness checks are performed by the caller to keep this pure.
+    pub fn scan_contractimports(&self, source: &str) -> Vec<ContractImportMismatchIssue> {
+        with_panic_guard(|| self.scan_contractimports_impl(source))
+    }
+
+    fn scan_contractimports_impl(&self, source: &str) -> Vec<ContractImportMismatchIssue> {
+        let file = match syn::parse_str::<syn::File>(source) {
+            Ok(f) => f,
+            Err(_) => return vec![],
+        };
+        let mut imports = Vec::new();
+
+        struct ContractImportVisitor<'a> {
+            issues: &'a mut Vec<ContractImportMismatchIssue>,
+        }
+
+        impl<'ast, 'a> visit::Visit<'ast> for ContractImportVisitor<'a> {
+            fn visit_macro(&mut self, node: &'ast syn::Macro) {
+                if node.path.is_ident("contractimport") {
+                    let tokens = node.tokens.to_string();
+                    // Basic parsing of `file = "..."`
+                    if let Some(path_start) = tokens.find("file = \"") {
+                        let path_start = path_start + 8;
+                        if let Some(path_end) = tokens[path_start..].find('"') {
+                            let wasm_path = &tokens[path_start..path_start + path_end];
+                            self.issues.push(ContractImportMismatchIssue {
+                                wasm_path: wasm_path.to_string(),
+                                location: node.path.segments[0].ident.span().start().line.to_string(),
+                                message: String::new(), // Populated by caller
+                            });
+                        }
+                    }
+                }
+                visit::visit_macro(self, node);
+            }
+        }
+
+        let mut visitor = ContractImportVisitor { issues: &mut imports };
+        visit::Visit::visit_file(&mut visitor, &file);
+        
+        imports
     }
 
     // ── Panic / unwrap / expect detection ────────────────────────────────────
@@ -2358,6 +2417,66 @@ mod tests {
         assert_eq!(todo_match.severity, RuleSeverity::Info);
         let unsafe_match = matches.iter().find(|m| m.rule_name == "no_unsafe").unwrap();
         assert_eq!(unsafe_match.severity, RuleSeverity::Critical);
+    }
+
+    // ── contractimport scanning tests ─────────────────────────────────────────
+
+    #[test]
+    fn test_scan_contractimports_detects_file_path() {
+        let analyzer = Analyzer::new(SanctifyConfig::default());
+        let source = r#"
+            use soroban_sdk::contractimport;
+            contractimport!(file = "../target/wasm32-unknown-unknown/release/my_contract.wasm");
+        "#;
+        let imports = analyzer.scan_contractimports(source);
+        assert_eq!(imports.len(), 1, "should detect one contractimport");
+        assert_eq!(
+            imports[0].wasm_path,
+            "../target/wasm32-unknown-unknown/release/my_contract.wasm"
+        );
+    }
+
+    #[test]
+    fn test_scan_contractimports_no_false_positive() {
+        let analyzer = Analyzer::new(SanctifyConfig::default());
+        // No contractimport! macro here — should find nothing
+        let source = r#"
+            #[contractimpl]
+            impl MyContract {
+                pub fn hello(env: Env) -> Symbol {
+                    Symbol::new(&env, "hello")
+                }
+            }
+        "#;
+        let imports = analyzer.scan_contractimports(source);
+        assert_eq!(
+            imports.len(),
+            0,
+            "contractimpl should not be confused with contractimport"
+        );
+    }
+
+    #[test]
+    fn test_scan_contractimports_multiple() {
+        let analyzer = Analyzer::new(SanctifyConfig::default());
+        let source = r#"
+            contractimport!(file = "../wasm/token.wasm");
+            contractimport!(file = "../wasm/oracle.wasm");
+        "#;
+        let imports = analyzer.scan_contractimports(source);
+        assert_eq!(imports.len(), 2, "should detect two contractimports");
+        let paths: Vec<&str> = imports.iter().map(|i| i.wasm_path.as_str()).collect();
+        assert!(paths.contains(&"../wasm/token.wasm"));
+        assert!(paths.contains(&"../wasm/oracle.wasm"));
+    }
+
+    #[test]
+    fn test_scan_contractimports_invalid_source_no_panic() {
+        let analyzer = Analyzer::new(SanctifyConfig::default());
+        // Intentionally broken Rust — should not panic, just return empty
+        let source = "this is { not valid rust }}}}";
+        let imports = analyzer.scan_contractimports(source);
+        assert_eq!(imports.len(), 0);
     }
 
     #[test]
