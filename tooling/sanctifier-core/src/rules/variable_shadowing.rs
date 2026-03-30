@@ -232,22 +232,22 @@ impl<'ast> Visit<'ast> for ShadowingVisitor {
     fn visit_expr_match(&mut self, node: &'ast syn::ExprMatch) {
         // Visit the match expression first
         visit::visit_expr(self, &node.expr);
-        
+
         // Visit each arm - each arm gets its own scope for pattern bindings
         for arm in &node.arms {
             self.enter_scope();
-            
+
             // Extract pattern bindings and check for shadowing
             extract_pattern_bindings(&arm.pat, self);
-            
+
             // Visit the guard if present
             if let Some((_, guard)) = &arm.guard {
                 visit::visit_expr(self, guard);
             }
-            
+
             // Visit the arm body
             visit::visit_expr(self, &arm.body);
-            
+
             self.exit_scope();
         }
     }

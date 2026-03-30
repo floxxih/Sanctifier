@@ -178,6 +178,7 @@ impl LedgerSizeRule {
         DISCRIMINANT_SIZE + max_variant
     }
 
+    #[allow(clippy::only_used_in_recursion)]
     fn estimate_type_size(&self, ty: &Type) -> usize {
         match ty {
             Type::Path(tp) => {

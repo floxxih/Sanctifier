@@ -58,7 +58,9 @@ pub const TRUNCATION_BOUNDS: &str = "S016";
 /// contractimport signature does not match actual implemented workspace source.
 pub const CONTRACTIMPORT_MISMATCH: &str = "S017";
 /// Use of PRNG without proper seeding in state-critical code.
-pub const UNSAFE_PRNG: &str = "S017";
+pub const UNSAFE_PRNG: &str = "S018";
+/// Per-user or large dataset stored in Instance storage instead of Persistent.
+pub const INSTANCE_STORAGE_MISUSE: &str = "S019";
 
 /// A single finding-code entry with machine-readable code, category, and
 /// human-readable description.
@@ -165,9 +167,16 @@ pub fn all_finding_codes() -> Vec<FindingCode> {
             code: CONTRACTIMPORT_MISMATCH,
             category: "integration",
             description: "contractimport signature does not match actual implemented workspace source",
+        },
+        FindingCode {
             code: UNSAFE_PRNG,
             category: "randomness",
             description: "Use of PRNG without proper seeding in state-critical code that could lead to predictable randomness",
+        },
+        FindingCode {
+            code: INSTANCE_STORAGE_MISUSE,
+            category: "storage_type",
+            description: "Per-user or large dataset stored in Instance storage instead of Persistent, causing ledger entry bloat",
         },
     ]
 }
@@ -200,5 +209,6 @@ mod tests {
         assert!(codes.iter().any(|c| c.code == TRUNCATION_BOUNDS));
         assert!(codes.iter().any(|c| c.code == CONTRACTIMPORT_MISMATCH));
         assert!(codes.iter().any(|c| c.code == UNSAFE_PRNG));
+        assert!(codes.iter().any(|c| c.code == INSTANCE_STORAGE_MISUSE));
     }
 }

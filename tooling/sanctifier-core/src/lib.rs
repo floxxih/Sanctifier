@@ -1,7 +1,3 @@
-use soroban_sdk::Env;
-use std::collections::HashSet;
-use syn::{parse_str, File, Item, Type, Fields, Meta, ExprMethodCall, Macro};
-use syn::visit::{self, Visit};
 //! **sanctifier-core** — static-analysis engine for Stellar Soroban smart
 //! contracts.
 //!
@@ -28,7 +24,11 @@ use syn::visit::{self, Visit};
 #![warn(missing_docs)]
 
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 use std::panic::catch_unwind;
+use syn::spanned::Spanned;
+use syn::visit::{self, Visit};
+use syn::{parse_str, Fields, File, Item, Meta, Type};
 
 /// Contract complexity metrics and reports.
 pub mod complexity;
@@ -68,10 +68,6 @@ pub mod smt {
 pub mod soroban_v21;
 /// Storage-key collision detection (internal).
 mod storage_collision;
-use std::collections::HashSet;
-use syn::spanned::Spanned;
-use syn::visit::{self, Visit};
-use syn::{parse_str, Fields, File, Item, Meta, Type};
 
 pub use complexity::{analyze_complexity, analyze_complexity_from_source, render_text_report};
 pub use rules::{Rule, RuleRegistry, RuleViolation, Severity};
@@ -778,7 +774,12 @@ impl Analyzer {
                             let wasm_path = &tokens[path_start..path_start + path_end];
                             self.issues.push(ContractImportMismatchIssue {
                                 wasm_path: wasm_path.to_string(),
-                                location: node.path.segments[0].ident.span().start().line.to_string(),
+                                location: node.path.segments[0]
+                                    .ident
+                                    .span()
+                                    .start()
+                                    .line
+                                    .to_string(),
                                 message: String::new(), // Populated by caller
                             });
                         }
@@ -788,9 +789,11 @@ impl Analyzer {
             }
         }
 
-        let mut visitor = ContractImportVisitor { issues: &mut imports };
+        let mut visitor = ContractImportVisitor {
+            issues: &mut imports,
+        };
         visit::Visit::visit_file(&mut visitor, &file);
-        
+
         imports
     }
 
@@ -1405,6 +1408,7 @@ impl Analyzer {
         total
     }
 
+    #[allow(clippy::only_used_in_recursion)]
     fn estimate_type_size(&self, ty: &Type) -> usize {
         match ty {
             Type::Path(tp) => {
