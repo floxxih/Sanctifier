@@ -69,8 +69,7 @@ function FindingCard({ finding }: { finding: Finding }) {
 }
 
 export function FindingsList({ findings, severityFilter }: FindingsListProps) {
-
-
+  const listRef = useRef<FixedSizeList>(null);
   const filtered = useMemo(() => {
     return severityFilter === "all"
       ? findings
@@ -116,7 +115,14 @@ export function FindingsList({ findings, severityFilter }: FindingsListProps) {
   const listHeight = Math.min(filtered.length * ITEM_HEIGHT, MAX_LIST_HEIGHT);
 
   return (
-
-    </div>
+    <FixedSizeList
+      height={listHeight}
+      itemCount={filtered.length}
+      itemSize={ITEM_HEIGHT}
+      width="100%"
+      ref={listRef}
+    >
+      {Row}
+    </FixedSizeList>
   );
 }

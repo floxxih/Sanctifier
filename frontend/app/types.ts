@@ -135,5 +135,6 @@ export interface CallGraphEdge {
   source: string;
   target: string;
   label?: string;
-  type: "calls" | "mutates" | "reads";
+  /** internal = both contracts are in the same project; calls = external contract */
+  type: "calls" | "mutates" | "reads" | "internal";
 }

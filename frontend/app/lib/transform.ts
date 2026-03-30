@@ -402,9 +402,14 @@ function extractReportedCallGraph(
   const nodeMap = new Map<string, CallGraphNode>();
   const edges: CallGraphEdge[] = [];
 
+  // First pass: collect all known caller names so we can classify edges.
+  const knownCallers = new Set(reportedEdges.map((e) => e.caller));
+
   reportedEdges.forEach((edge) => {
     const sourceId = `fn-${edge.caller}`;
-    const targetId = `external-${edge.callee}`;
+    // If the callee is also a known caller in this project it's an internal call.
+    const isInternal = knownCallers.has(edge.callee);
+    const targetId = isInternal ? `fn-${edge.callee}` : `external-${edge.callee}`;
 
     if (!nodeMap.has(sourceId)) {
       nodeMap.set(sourceId, {
@@ -419,7 +424,7 @@ function extractReportedCallGraph(
       nodeMap.set(targetId, {
         id: targetId,
         label: edge.callee,
-        type: "external",
+        type: isInternal ? "function" : "external",
       });
     }
 
@@ -429,7 +434,7 @@ function extractReportedCallGraph(
       label: edge.function_expr
         ? `${edge.function_expr} (${edge.file}:${edge.line})`
         : `${edge.file}:${edge.line}`,
-      type: "calls",
+      type: isInternal ? "internal" : "calls",
     });
   });
 
