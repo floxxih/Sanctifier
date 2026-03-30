@@ -1,7 +1,3 @@
-use soroban_sdk::Env;
-use std::collections::HashSet;
-use syn::{parse_str, File, Item, Type, Fields, Meta, ExprMethodCall, Macro};
-use syn::visit::{self, Visit};
 //! **sanctifier-core** — static-analysis engine for Stellar Soroban smart
 //! contracts.
 //!
@@ -27,11 +23,17 @@ use syn::visit::{self, Visit};
 
 #![warn(missing_docs)]
 
+use soroban_sdk::Env;
+use std::collections::HashSet;
+use syn::{parse_str, File, Item, Type, Fields, Meta, ExprMethodCall, Macro};
+use syn::visit::{self, Visit};
 use serde::{Deserialize, Serialize};
 use std::panic::catch_unwind;
 
 /// Contract complexity metrics and reports.
 pub mod complexity;
+/// Custom YAML-based rule definitions.
+pub mod custom_yaml_rules;
 /// Canonical finding codes (`S000` – `S012`) emitted by every analysis pass.
 pub mod finding_codes;
 /// Gas / instruction-cost estimation heuristics.
@@ -42,6 +44,8 @@ pub(crate) mod gas_report;
 pub mod patcher;
 /// Pluggable rule system ([`Rule`] trait, [`RuleRegistry`], built-in rules).
 pub mod rules;
+/// Soroban SDK version detection and deprecation warnings.
+pub mod sdk_version;
 /// SEP-41 token-interface verification.
 pub mod sep41;
 /// Z3 SMT solver integration for formal verification.
@@ -68,15 +72,13 @@ pub mod smt {
 pub mod soroban_v21;
 /// Storage-key collision detection (internal).
 mod storage_collision;
-use std::collections::HashSet;
-use syn::spanned::Spanned;
-use syn::visit::{self, Visit};
-use syn::{parse_str, Fields, File, Item, Meta, Type};
 
 pub use complexity::{analyze_complexity, analyze_complexity_from_source, render_text_report};
 pub use rules::{Rule, RuleRegistry, RuleViolation, Severity};
 pub use sep41::{Sep41Issue, Sep41IssueKind, Sep41VerificationReport};
 pub use smt::SmtInvariantIssue;
+
+use syn::spanned::Spanned;
 
 // Redundant imports removed
 use crate::rules::arithmetic_overflow::ArithVisitor;
@@ -565,6 +567,11 @@ impl Analyzer {
     /// List the names of all registered rules.
     pub fn available_rules(&self) -> Vec<&str> {
         self.rule_registry.available_rules()
+    }
+
+    /// Detect Soroban SDK version and check for deprecations.
+    pub fn detect_sdk_version(&self, cargo_toml_path: &std::path::Path) -> sdk_version::SdkVersionInfo {
+        sdk_version::detect_sdk_version(cargo_toml_path)
     }
 
     /// Analyse upgrade/admin patterns and return an [`UpgradeReport`].

@@ -9,6 +9,8 @@ pub mod arithmetic_overflow;
 pub mod auth_gap;
 /// Ledger entry size analysis.
 pub mod ledger_size;
+/// Missing state event emission.
+pub mod missing_state_event;
 /// Panic / unwrap detection.
 pub mod panic_detection;
 /// Reentrancy vulnerability detection and auto-fix.
@@ -17,6 +19,8 @@ pub mod reentrancy;
 pub mod shadow_storage;
 /// Integer truncation and unchecked bounds detection.
 pub mod truncation_bounds;
+/// Unchecked external call detection.
+pub mod unchecked_external_call;
 /// Unhandled `Result` values.
 pub mod unhandled_result;
 /// Unsafe PRNG usage in state-critical code.
@@ -181,6 +185,8 @@ impl RuleRegistry {
         registry.register(truncation_bounds::TruncationBoundsRule::new());
         registry.register(unsafe_prng::UnsafePrngRule::new());
         registry.register(variable_shadowing::VariableShadowingRule::new());
+        registry.register(unchecked_external_call::UncheckedExternalCallRule::new());
+        registry.register(missing_state_event::MissingStateEventRule::new());
         registry
     }
 }
