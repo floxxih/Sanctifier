@@ -10,6 +10,13 @@ inputs:
     description: Contract path to analyze
     required: false
     default: "."
+  version:
+    description: >-
+      sanctifier-cli version to install (e.g. 0.2.3). If omitted and the action
+      is used via a semver tag (e.g. HyperSafeD/Sanctifier@v0.2.3), the tag
+      version is used automatically.
+    required: false
+    default: ""
   min-severity:
     description: Minimum severity to report (critical|high|medium|low)
     required: false
@@ -37,7 +44,20 @@ runs:
   steps:
     - name: Install Sanctifier CLI
       shell: bash
-      run: cargo install sanctifier-cli --locked
+      run: |
+        python "${{ github.action_path }}/scripts/resolve_action_version.py" \
+          --action-ref "${{ github.action_ref }}" \
+          --requested "${{ inputs.version }}" \
+          --output "$RUNNER_TEMP/sanctifier_cli_version"
+
+        version="$(cat "$RUNNER_TEMP/sanctifier_cli_version" || true)"
+        if [ -n "$version" ]; then
+          echo "Installing sanctifier-cli==$version"
+          cargo install sanctifier-cli --locked --version "$version"
+        else
+          echo "Installing sanctifier-cli (latest)"
+          cargo install sanctifier-cli --locked
+        fi
 
     - name: Analyze project
       shell: bash
