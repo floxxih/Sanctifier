@@ -52,6 +52,7 @@ jobs:
         with:
           name: junit-test-results
           path: target/nextest/ci/junit.xml
+          retention-days: 7
 
       - name: Build release binary
         run: cargo build --release -p sanctifier-cli

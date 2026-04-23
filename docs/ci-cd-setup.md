@@ -9,6 +9,7 @@ The automation includes:
 - **GitHub Actions**: Automated deployment on push and schedule
 - **Continuous Validation**: Periodic health checks and metrics collection
 - **Artifact Management**: Deployment manifests and logs
+- **Frontend E2E (Playwright)**: Browser-level regression checks
 
 ## Prerequisites
 
@@ -171,6 +172,28 @@ The workflow file: `.github/workflows/soroban-deploy.yml`
 1. `build-and-deploy`: Build, deploy, validate
 2. `continuous-validation`: Run health checks
 3. `notification`: Generate reports
+
+### 4.4 Artifact retention strategy (why + where to change)
+
+Sanctifier uploads a few different artifact types and sets retention explicitly to keep CI predictable and costs bounded:
+
+- **Deployment artifacts** (`.github/workflows/soroban-deploy.yml`): `retention-days: 30`
+- **CI artifacts** (coverage, WASM pkg, Playwright reports, JUnit XML, etc.): `retention-days: 7`
+
+To change this, update the relevant `actions/upload-artifact@v4` steps and adjust the `retention-days` value(s).
+
+### 4.5 Frontend E2E in CI (Playwright)
+
+The frontend has Playwright E2E tests under `frontend/tests/e2e/` and a CI job in `.github/workflows/ci.yml`.
+
+Locally:
+
+```bash
+cd frontend
+npm ci
+npx playwright install chromium
+npm run test:e2e
+```
 
 ### 4.2 Workflow Permissions
 

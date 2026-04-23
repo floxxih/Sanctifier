@@ -145,6 +145,46 @@ jobs:
           path: frontend/coverage/
           retention-days: 7
 
+  frontend-e2e:
+    name: Frontend E2E Tests (Playwright)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build WASM stub
+        run: |
+          mkdir -p tooling/sanctifier-wasm/pkg
+          echo '{"name":"@sanctifier/wasm","version":"0.0.0","main":"index.js"}' > tooling/sanctifier-wasm/pkg/package.json
+          echo 'module.exports = {};' > tooling/sanctifier-wasm/pkg/index.js
+
+      - name: Install frontend dependencies
+        run: cd frontend && npm ci
+
+      - name: Install Playwright browsers
+        run: cd frontend && npx playwright install --with-deps chromium
+
+      - name: Run e2e tests
+        run: cd frontend && npm run test:e2e
+
+      - name: Upload Playwright artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-artifacts
+          path: |
+            frontend/playwright-report/
+            frontend/test-results/
+          retention-days: 7
+
   commitlint:
     name: Lint Commit Messages
     runs-on: ubuntu-latest
