@@ -96,7 +96,7 @@ export const CallGraph = memo(function CallGraph({ nodes, edges }: CallGraphProp
   const externalCount = edges.filter((e) => e.type === "calls").length;
 
   return (
-    <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-6">
+    <div data-testid="call-graph-container" className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-6">
       <div className="flex flex-wrap justify-between items-start gap-2 mb-4">
         <div>
           <h3 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">
