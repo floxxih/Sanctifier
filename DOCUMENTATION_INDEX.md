@@ -100,9 +100,11 @@
 
 **[frontend/docs/report-export.md](frontend/docs/report-export.md)**  
 **[frontend/docs/offline-dev-mode.md](frontend/docs/offline-dev-mode.md)**
+**[frontend/docs/self-hosting.md](frontend/docs/self-hosting.md)**
 
 - Report export behavior (PDF/CSV/JSON)
 - Offline/local JSON workflow vs contract-upload mode
+- Self-hosting runtime boundaries and safe defaults
 - Contributor guardrails for frontend parsing and export paths
 
 ### Finding-Code Fixtures
@@ -111,6 +113,7 @@
 
 - Fixture matrix for finding codes `S001` through `S012`
 - Upgrade/admin risk fixture notes for hardened validation paths
+- SEP-41 conformance fixture entrypoint: `s012_token_interface.rs`
 
 ### Sanctifier CLI Deploy Command
 

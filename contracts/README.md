@@ -27,6 +27,7 @@ This directory contains the Soroban contracts used by Sanctifier for analysis, f
 - Event-emission fixture notes live in `runtime-guard-wrapper` and `proxy`.
 - Storage-collision fixture notes live in `runtime-guard-wrapper` and `shadowing-example`.
 - Unhandled-`Result` fixture notes live in `runtime-guard-wrapper` and `token-with-bugs`.
+- SEP-41 conformance fixtures live in `my-contract` and `fixtures/finding-codes/s012_token_interface.rs`.
 ## Structure
 - `vulnerable-contract/`: A reference implementation demonstrating common security pitfalls Sanctifier can detect.
 - `fixtures/finding-codes/`: Scan fixtures mapped to `S001` through `S012`.

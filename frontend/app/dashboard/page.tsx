@@ -2,8 +2,15 @@
 
 import { useState, useCallback, useTransition, useMemo } from "react";
 import dynamic from "next/dynamic";
-import type { CallGraphNode, CallGraphEdge, Finding, Severity, WorkspaceSummary } from "../types";
+import type { Severity } from "../types";
 import { transformReport, extractCallGraph, normalizeReport } from "../lib/transform";
+import {
+  createWorkspaceFromSingleReport,
+  extractErrorMessage,
+  isWorkspaceSummary,
+  parseJsonInput,
+  SAMPLE_JSON,
+} from "../lib/report-ingestion";
 import { exportToPdf } from "../lib/export-pdf";
 import { SeverityFilter } from "../components/SeverityFilter";
 import { FindingsList } from "../components/FindingsList";
@@ -23,35 +30,10 @@ const CallGraph = dynamic(() => import("../components/CallGraph").then((m) => m.
   ),
 });
 
-const SAMPLE_JSON = `{
-  "size_warnings": [],
-  "unsafe_patterns": [],
-  "auth_gaps": [],
-  "panic_issues": [],
-  "arithmetic_issues": []
-}`;
-
 type Tab = "findings" | "callgraph";
 
-function extractErrorMessage(payload: unknown, fallback: string): string {
-  if (typeof payload === "string" && payload.trim()) {
-    return payload;
-  }
-
-  if (
-    typeof payload === "object" &&
-    payload !== null &&
-    "error" in payload &&
-    typeof payload.error === "string"
-  ) {
-    return payload.error;
-  }
-
-  return fallback;
-}
-
 export default function DashboardPage() {
-  const { workspace, selectedContract, setWorkspace, updateContractReport } = useWorkspace();
+  const { selectedContract, setWorkspace } = useWorkspace();
   const [severityFilter, setSeverityFilter] = useState<Severity | "all">("all");
   const [error, setError] = useState<string | null>(null);
   const [jsonInput, setJsonInput] = useState("");
@@ -73,22 +55,10 @@ export default function DashboardPage() {
 
   const applyReport = useCallback((rawReport: unknown) => {
     startTransition(() => {
-      // Check if it's a workspace summary or a single report
-      if (typeof rawReport === "object" && rawReport !== null && "contracts" in rawReport && Array.isArray((rawReport as any).contracts)) {
-        setWorkspace(rawReport as WorkspaceSummary);
+      if (isWorkspaceSummary(rawReport)) {
+        setWorkspace(rawReport);
       } else {
-        // Create a synthetic workspace for a single report
-        const report = normalizeReport(rawReport);
-        setWorkspace({
-          workspace: "Uploaded Report",
-          contracts: [{
-            name: "current-contract",
-            total_findings: transformReport(report).length,
-            report: report
-          }],
-          shared_libs: [],
-          grand_total_findings: transformReport(report).length
-        });
+        setWorkspace(createWorkspaceFromSingleReport(rawReport));
       }
     });
   }, [setWorkspace]);
@@ -97,7 +67,7 @@ export default function DashboardPage() {
     setError(null);
     setUploadStatus(null);
     try {
-      applyReport(JSON.parse(text || SAMPLE_JSON));
+      applyReport(parseJsonInput(text));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Invalid JSON");
       setWorkspace(null);
